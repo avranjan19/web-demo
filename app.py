@@ -4,13 +4,13 @@ import time
 from pathlib import Path
 
 import streamlit as st
-from anthropic import Anthropic
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
 
 CORPUS_DIR = Path(__file__).parent / "corpus"
-MAX_CORPUS_CHARS = 60000
+MAX_CORPUS_CHARS = 32000
 LANDING_PAGE_URL = "https://fincompli.in"  # update to your live GoHighLevel page
 
 st.set_page_config(page_title="FinCompliOS — Regulatory Q&A", layout="centered")
@@ -42,30 +42,30 @@ def load_corpus() -> str:
     files = sorted(glob.glob(str(CORPUS_DIR / "*.md")))
     if not files:
         return ""
-    parts = [open(p, encoding="utf-8").read() for p in files]
-    return "\n\n".join(parts)[:MAX_CORPUS_CHARS]
+    per_file_limit = MAX_CORPUS_CHARS // len(files)
+    parts = [open(p, encoding="utf-8").read()[:per_file_limit] for p in files]
+    return "\n\n".join(parts)
 
 
 @st.cache_resource(show_spinner=False)
-def get_client() -> Anthropic:
-    api_key = os.environ.get("ANTHROPIC_API_KEY") or st.secrets.get("ANTHROPIC_API_KEY")
+def get_client() -> Groq:
+    api_key = os.environ.get("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
     if not api_key:
-        st.error("ANTHROPIC_API_KEY is not set. Add it to .env locally or to Streamlit Cloud secrets.")
+        st.error("GROQ_API_KEY is not set. Add it to .env locally or to Streamlit Cloud secrets.")
         st.stop()
-    return Anthropic(api_key=api_key)
+    return Groq(api_key=api_key)
 
 
-def ask(question: str, corpus: str, client: Anthropic) -> str:
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
+def ask(question: str, corpus: str, client: Groq) -> str:
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"Regulatory documents:\n{corpus}\n\nQuestion: {question}",
-        }],
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Regulatory documents:\n{corpus}\n\nQuestion: {question}"},
+        ],
     )
-    return response.content[0].text
+    return response.choices[0].message.content
 
 
 # ---- UI ----

@@ -56,7 +56,7 @@ def main():
             print(f"  Failed to run actor for '{query}': {e}")
             continue
 
-        items = client.dataset(run["defaultDatasetId"]).list_items().items
+        items = client.dataset(run.default_dataset_id).list_items().items
         for i, item in enumerate(items):
             markdown = (item.get("markdown") or "").strip()
             url = item.get("url", "unknown-source")
